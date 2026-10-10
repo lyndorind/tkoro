@@ -10,10 +10,20 @@ app = FastAPI(
 def root():
     return {"message": "Service is running"}
 
-
 @app.get("/info")
 def info():
     return {
         "name": "Git Lab 2 REST Service",
         "version": "1.0.0"
     }
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "Git Lab 2 REST Service"
+    }
+
+@app.get("/hello/{name}")
+def hello(name: str):
+    return {"message": f"Hello, {name}!"}

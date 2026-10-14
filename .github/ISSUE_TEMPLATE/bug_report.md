@@ -1,4 +1,3 @@
-
 ---
 name: Bug report
 about: Report a problem with the project

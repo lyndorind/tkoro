@@ -12,7 +12,13 @@ The format is based on Keep a Changelog.
 - Security Policy.
 - Community documentation.
 
-# Changelog
+## [0.1.0] - 2026-10-14
+
+### Added
+- Initial project structure.
+- Basic FastAPI REST service.
+- README documentation.
+- Git repository configuration.
 
 ## [0.1.0] - 2026-10-25
 
@@ -25,10 +31,7 @@ The format is based on Keep a Changelog.
 ### Changed
 - Improved repository documentation.
 
-## [0.1.0] - 2026-10-14
+## [0.1.1] - 2026-10-25
 
-### Added
-- Initial project structure.
-- Basic FastAPI REST service.
-- README documentation.
-- Git repository configuration.
+### Changed
+- Improved health check endpoint documentation.

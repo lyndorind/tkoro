@@ -16,6 +16,19 @@
 Pull Requests are validated using GitHub Actions.
 The workflow builds the Python package and verifies SHA-256 checksums.
 
+## Health Check
+
+The application provides a health check endpoint
+for monitoring API availability.
+
+### Request
+
+GET /health
+
+### Response
+
+The endpoint returns the health status of the service.
+
 ## Installation
 
 Install dependencies:

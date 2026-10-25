@@ -11,9 +11,16 @@
 - uv
 - Git
 
+## Continuous Integration
+
+Pull Requests are validated using GitHub Actions.
+The workflow builds the Python package and verifies SHA-256 checksums.
+
 ## Installation
 
 Install dependencies:
 
 ```bash
 uv sync
+
+

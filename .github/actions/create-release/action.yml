@@ -1,0 +1,55 @@
+
+name: Create GitHub Release
+description: Create a version tag and release with package assets
+
+inputs:
+  version:
+    description: Package version without v prefix
+    required: true
+
+  notes-file:
+    description: Path to release notes file
+    required: true
+
+  token:
+    description: GitHub token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email \
+          "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - name: Create and push tag
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        TAG="v${VERSION}"
+
+        if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null; then
+          echo "Tag ${TAG} already exists."
+          exit 1
+        fi
+
+        git tag "$TAG"
+        git push origin "$TAG"
+
+    - name: Create GitHub release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.version }}
+        NOTES_FILE: ${{ inputs.notes-file }}
+      run: |
+        set -euo pipefail
+        gh release create "v${VERSION}" dist/* \
+          --title "v${VERSION}" \
+          --notes-file "$NOTES_FILE" \
+          --verify-tag

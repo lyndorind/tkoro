@@ -12,6 +12,16 @@ The format is based on Keep a Changelog.
 - Security Policy.
 - Community documentation.
 
+# Changelog
+
+## [0.1.0] - 2026-10-25
+
+### Added
+- Initial FastAPI REST service.
+- Health check endpoint.
+- GitHub Actions build automation.
+- SHA-256 artifact verification.
+
 ### Changed
 - Improved repository documentation.
 

@@ -38,8 +38,8 @@ jobs:
         shell: bash
         run: |
           cd dist
-          sha256sum *.whl *.tar.gz > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          sha256sum ./*.whl ./*.tar.gz > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
 
       - name: Upload package artifacts

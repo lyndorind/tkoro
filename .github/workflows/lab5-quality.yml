@@ -1,0 +1,58 @@
+
+name: Lab 5 - Code Quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint and Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-cov httpx ruff allure-pytest
+
+      - name: Run Ruff
+        run: ruff check main.py src tests
+
+      - name: Run Pytest with coverage
+        run: |
+          pytest tests/ -v \
+            --cov=main \
+            --cov=src/git_lab2 \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --alluredir=allure-results
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          if-no-files-found: ignore

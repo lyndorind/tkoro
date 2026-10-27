@@ -43,7 +43,6 @@ jobs:
             --cov-report=xml:coverage.xml \
             --alluredir=allure-results
 
-
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -57,3 +56,11 @@ jobs:
           name: allure-results
           path: allure-results/
           if-no-files-found: ignore
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: true
+          verbose: true

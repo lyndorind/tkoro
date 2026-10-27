@@ -33,15 +33,16 @@ jobs:
 
       - name: Run Ruff
         run: ruff check main.py src tests
-
+     
       - name: Run Pytest with coverage
         run: |
-          pytest tests/ -v \
+          python -m pytest tests/ -v \
             --cov=main \
             --cov=src/git_lab2 \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             --alluredir=allure-results
+
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4

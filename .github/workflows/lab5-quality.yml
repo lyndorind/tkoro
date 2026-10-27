@@ -36,11 +36,12 @@ jobs:
      
       - name: Run Pytest with coverage
         run: |
-          python -m pytest tests/ -v \
+          pytest tests/ -v \
             --cov=main \
             --cov=src/git_lab2 \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
+            --cov-fail-under=60 \
             --alluredir=allure-results
 
       - name: Upload coverage artifact

@@ -35,9 +35,10 @@ jobs:
 
       - name: Generate coverage
         run: |
-          pytest tests/ \
+          python -m pytest tests/ -v \
             --cov=main \
             --cov=src/git_lab2 \
+            --cov-report=term-missing \
             --cov-report=xml:coverage.xml
 
       - name: SonarQube Cloud Scan

@@ -26,6 +26,7 @@ runs:
           "41898282+github-actions[bot]@users.noreply.github.com"
 
     - name: Create and push tag
+      id: tag
       shell: bash
       env:
         VERSION: ${{ inputs.version }}
@@ -33,15 +34,19 @@ runs:
         set -euo pipefail
         TAG="v${VERSION}"
 
-        if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null; then
-          echo "Tag ${TAG} already exists."
-          exit 1
+        if git ls-remote --exit-code --tags origin \
+          "refs/tags/${TAG}" > /dev/null 2>&1; then
+          echo "Tag ${TAG} already exists. Skipping release."
+          echo "created=false" >> "$GITHUB_OUTPUT"
+          exit 0
         fi
 
         git tag "$TAG"
         git push origin "$TAG"
+        echo "created=true" >> "$GITHUB_OUTPUT"
 
     - name: Create GitHub release
+      if: steps.tag.outputs.created == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}

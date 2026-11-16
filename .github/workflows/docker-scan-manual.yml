@@ -1,0 +1,10 @@
+name: Lab 6 - Manual container security scan
+
+ on:
+ workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Quay.io image tag to scan'
+        required: true
+        default: latest
+        type: string

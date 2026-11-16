@@ -37,3 +37,20 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ github.event.release.tag_name }}
             ${{ env.IMAGE }}:latest
+
+  notify-slack:
+    needs: release-image
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Notify Slack about release status
+        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
+        uses: slackapi/slack-github-action@v4.0.0
+        with:
+          webhook: ${{ env.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "*Lab 6 Quay.io release* ${{ github.event.release.tag_name }}: *${{ needs.release-image.result }}*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

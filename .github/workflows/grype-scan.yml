@@ -1,0 +1,60 @@
+name: Lab 6 - Grype Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image version"
+        required: true
+        default: "latest"
+        type: string
+
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  grype-scan:
+    name: Scan Docker image with Grype
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE: ${{ vars.QUAY_IMAGE }}
+      TAG: ${{ inputs.image_tag || 'latest' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v4
+        with:
+          registry: quay.io
+          username: ${{ vars.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull "${IMAGE}:${TAG}"
+
+      - name: Scan image with Grype
+        id: grype
+        uses: anchore/scan-action@v7
+        with:
+          image: ${{ env.IMAGE }}:${{ env.TAG }}
+          fail-build: false
+          output-format: sarif
+
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: lab6-grype
+
+      - name: Save SARIF report
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-sarif-report
+          path: ${{ steps.grype.outputs.sarif }}

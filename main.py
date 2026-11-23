@@ -1,9 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from db_api import router as db_router, init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
 
 app = FastAPI(
     title="Git Lab 2 REST Service",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
+
+app.include_router(db_router)
 
 
 @app.get("/")

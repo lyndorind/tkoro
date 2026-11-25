@@ -22,3 +22,4 @@ allure-report
 *.sarif
 *.json.log
 node_modules
+secrets/

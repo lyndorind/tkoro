@@ -1,0 +1,179 @@
+name: Lab 7 - PR Docker, Postman and JMeter
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# All four jobs have no `needs`, so unit and integration tests run in parallel.
+jobs:
+  unit-tests:
+    name: Lab 7 unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: Validate note input model
+        run: uv run --frozen python -m unittest discover -s tests -p 'test_lab7_*.py' -v
+
+  docker-pr-build:
+    name: Build Docker image with temporary PR tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (no registry push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: quay.io/lyndorind/tkoro:pr-${{ github.event.pull_request.number || 'manual' }}-${{ github.sha }}
+      - name: Show temporary tag
+        run: docker image inspect 'quay.io/lyndorind/tkoro:pr-${{ github.event.pull_request.number || 'manual' }}-${{ github.sha }}' --format '{{.Id}} {{join .RepoTags ", "}}'
+
+  integration-tests:
+    name: Postman integration tests and HTML report
+    runs-on: ubuntu-latest
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_NAME: lab7
+      DB_USER: lab7
+      DB_PASSWORD: lab7-ci-test-password
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: lab7
+          POSTGRES_USER: lab7
+          POSTGRES_PASSWORD: lab7-ci-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd 'pg_isready -U lab7 -d lab7'
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Python dependencies and Newman HTML reporter
+        run: |
+          uv sync --frozen
+          npm install --no-save --no-package-lock newman newman-reporter-html
+      - name: Start FastAPI with the PostgreSQL service container
+        run: |
+          uv run --frozen uvicorn main:app --host 127.0.0.1 --port 8000 > lab7-api.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 100 lab7-api.log
+          exit 1
+      - name: Execute Postman collection
+        run: |
+          mkdir -p reports/postman
+          npx newman run postman/lab7.postman_collection.json \
+            --reporters cli,html,json \
+            --reporter-html-export reports/postman/index.html \
+            --reporter-json-export reports/postman/results.json
+      - name: Upload HTML and JSON reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab7-postman-report-${{ github.run_id }}
+          path: |
+            reports/postman/
+            lab7-api.log
+          if-no-files-found: warn
+
+  load-tests:
+    name: JMeter load and Docker resource monitoring
+    runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: lab7-ci-test-password
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: lab7
+          POSTGRES_USER: lab7
+          POSTGRES_PASSWORD: lab7-ci-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd 'pg_isready -U lab7 -d lab7'
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Apache JMeter 5.6.3
+        run: |
+          curl --fail --location --retry 3 \
+            https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.tgz \
+            --output /tmp/apache-jmeter-5.6.3.tgz
+          tar -xzf /tmp/apache-jmeter-5.6.3.tgz -C /tmp
+      - name: Build and start the API container
+        run: |
+          docker build --tag lab7-load-api:ci .
+          docker run --detach --rm --name lab7-load-api --network host \
+            --env DB_HOST=127.0.0.1 \
+            --env DB_PORT=5432 \
+            --env DB_NAME=lab7 \
+            --env DB_USER=lab7 \
+            --env DB_PASSWORD \
+            lab7-load-api:ci
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs lab7-load-api
+          exit 1
+      - name: Seed a note for GET /notes/1
+        run: |
+          curl --fail --show-error --silent \
+            --header 'Content-Type: application/json' \
+            --data '{"text":"Lab 7 CI JMeter seed"}' \
+            http://127.0.0.1:8000/notes
+      - name: Run JMeter and monitor both containers
+        env:
+          JMETER_BIN: /tmp/apache-jmeter-5.6.3/bin/jmeter
+        run: bash scripts/lab7_load_ci.sh
+      - name: Upload JMeter HTML, samples, stats and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab7-jmeter-report-${{ github.run_id }}
+          path: reports/jmeter/
+          if-no-files-found: warn
+      - name: Show API container logs
+        if: always()
+        run: docker logs --tail 100 lab7-load-api || true
